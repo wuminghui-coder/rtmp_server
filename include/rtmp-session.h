@@ -7,6 +7,8 @@
 #include "rtmp-chunk-header.h"
 #include "rtmp-write-command.h"
 #include "shm-cache.h"
+#include "rtmp-gop-cache.h"
+
 #define RTMP_OUTPUT_CHUNK_SIZE	4096
 
 typedef struct
@@ -40,16 +42,15 @@ typedef struct
     rtmp_packet *packet;
     buffer_ptr buffer;
     rtmp_config config;
-    shm_cache_ptr cache;
     sche_ptr scher;
     timer_ptr pull_stream;
     int times;
     int flags;
+    gop_cache *gop;
 } rtmp_session, *rtmp_ptr;
 
 int rtmp_recv_msg(void *user);
-void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher);
-int rtmp_push_stream_session(void *user, uint8_t *data, int size, int type);
+void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher, void *gop);
 int rtmp_detele_session(void *user);
 
 #endif // !__RMTP_SESSION_H__

@@ -92,7 +92,7 @@ int rtmp_recv_msg(void *user)
     return NET_SUCCESS;
 }
 
-void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher)
+void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher, void *gop)
 {   
     if (buffer == NULL)
         return NULL;
@@ -117,23 +117,9 @@ void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher)
     rtmp->buffer = buffer;
     rtmp->packet = NULL;
     rtmp->config.out_chunk_size = RTMP_OUTPUT_CHUNK_SIZE;
-
-    rtmp->cache = shm_cache_init(4096 * 1000);
     rtmp->scher = scher;
-    
+    rtmp->gop = gop;
     return rtmp;
-}
-
-int rtmp_push_stream_session(void *user, uint8_t *data, int size, int type)
-{
-    if (user == NULL || data == NULL)
-        return NET_FAIL;
-
-    rtmp_ptr rtmp = (rtmp_ptr)user;
-
-    if (rtmp->cache)
-        shm_cache_put(rtmp->cache, data, size, type);
-    return NET_SUCCESS;
 }
 
 int rtmp_detele_session(void *user)
@@ -151,9 +137,6 @@ int rtmp_detele_session(void *user)
     if (rtmp->send_buffer)
         bs_free(rtmp->send_buffer);
     
-    if (rtmp->cache)
-        shm_cache_unint(rtmp->cache);
-
     if (rtmp)
         net_free(rtmp);
 

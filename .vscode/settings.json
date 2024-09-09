@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "compare": "c",
+        "type_traits": "c",
+        "array": "c",
+        "chrono": "c",
+        "executor": "c",
+        "internet": "c",
+        "functional": "c",
+        "ratio": "c",
+        "tuple": "c",
+        "utility": "c",
+        "buffer": "c",
+        "socket": "c",
+        "string_view": "c",
+        "initializer_list": "c",
+        "string": "c",
+        "list": "c"
+    }
+}

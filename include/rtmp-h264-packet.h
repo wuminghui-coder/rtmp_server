@@ -6,6 +6,7 @@
 #include "shm-cache.h"
 #include "net-schedule.h"
 #include "net-tcp-server.h"
+#include "rtmp-gop-cache.h"
 
 enum {
     NAL_UNIT_TYPE_UNSPECIFIED = 0,                    // Unspecified
@@ -36,16 +37,14 @@ typedef struct
 {
     FILE *fp;
     buffer_ptr buffer;
-    cache_buffer *stream_info[2];
-    shm_cache_ptr cache;
-    sche_ptr scher;
-    timer_ptr pull_stream;
-    timer_ptr push_stream;
-    server_ptr rtmp_server;
+    gop_cache *g;
 } h264_stream;
 
-h264_stream *h264_stream_init(const char *file);
 void h264_stream_unint(h264_stream *stream);
-int h264_stream_start(h264_stream *stream, shm_cache_ptr cache, server_ptr rtmp_server);
+h264_stream *h264_stream_init(const char *file, gop_cache *gop);
+int rtmp_pull_h264_stream(void *args);
+frame_info *rtmp_write_frame(frame_info *frame);
 
 #endif // !__RMTP_H264_H__
+
+

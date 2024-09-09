@@ -22,36 +22,35 @@ void signal_handler(int signl)
 
 int main()
 {
-    net_exception(signal_handler); 
-    
-    h264_stream *stream = h264_stream_init("/home/wmh/wmh/rtmp/example/files/test.h264");
+    //net_exception(signal_handler); 
+
+    gop_cache *gop = create_gop_cache();
+    if (gop == NULL)
+        return EXIT_FAILURE;
+
+    h264_stream *stream = h264_stream_init("/home/wmh/wmh/rtmp/example/files/test.h264", gop);
     if (stream == NULL)
         return EXIT_FAILURE;
 
-    shm_cache_ptr ring_cache = shm_cache_init(4096 * 1000);
-    if (ring_cache == NULL)
-    {
-        ERR("create error");
-        return EXIT_FAILURE;
-    }
-
     server_ptr rtmp_server = tcp_start_server(DEFAULT_IP, 1935, 
-                rtmp_create_session, rtmp_detele_session, rtmp_push_stream_session, rtmp_recv_msg);
+                rtmp_create_session, rtmp_detele_session, rtmp_recv_msg, gop);
     if (rtmp_server == NULL)
     {
         ERR("create rtmp server error");
         return EXIT_FAILURE;
     }
 
-    h264_stream_start(stream, ring_cache, rtmp_server);
+    sche_ptr scher = net_create_scheduler();
+    if (scher == NULL)
+        return EXIT_FAILURE;
+
+    timer_ptr pull_stream = net_add_timer_task(scher, 0, 30, rtmp_pull_h264_stream, (void *)stream);
 
     while (exit_flags)
         sleep(1);
 
     h264_stream_unint(stream);
 
-    shm_cache_unint(ring_cache);
-    
     tcp_stop_server(rtmp_server);
 
     return EXIT_SUCCESS;
