@@ -202,7 +202,7 @@ h264_stream *h264_stream_init(const char *file, gop_cache *gop)
         if (stream->buffer == NULL)
             break;
 
-        stream->ring_cache = shm_cache_init(4096 * 1000);
+        stream->ring_cache = shm_cache_init(4096 * 1000 * 100);
 
         stream->scher = net_create_scheduler();
 

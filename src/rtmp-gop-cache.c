@@ -52,7 +52,7 @@ static void push_frame_to_stream(gop_cache *gop, frame_info *frame)
     frame_info *sp = NULL;
     if (f->frame == NAL_UNIT_TYPE_CODED_SLICE_IDR)
     {
-        sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
+        //sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
     }
 
     stream_list *task_node = NULL;

@@ -3,8 +3,6 @@
 #include "rtmp-h264-packet.h"
 #include "rtmp-gop-cache.h"
 
-
-
 int rtmp_start_stream(void *stream, frame_info *frame)
 {
     stream_info * s = (stream_info *)stream;
@@ -13,7 +11,6 @@ int rtmp_start_stream(void *stream, frame_info *frame)
     //ERR("time: %lld, %d", timess, frame->type);
     s->gtimess += timess;
     rtmp_server_send_key_frame(s->stream, frame->frame, frame->size, s->times);
-
     s->times += 40;
 }
 
