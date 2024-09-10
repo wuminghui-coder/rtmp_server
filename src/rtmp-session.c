@@ -131,9 +131,6 @@ int rtmp_detele_session(void *user)
     if (rtmp->pool)
         net_free(rtmp->pool);
 
-    if (rtmp->pull_stream)
-        rtmp_stop_push_stream(rtmp);
-
     if (rtmp->send_buffer)
         bs_free(rtmp->send_buffer);
     

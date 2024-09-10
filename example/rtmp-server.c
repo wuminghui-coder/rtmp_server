@@ -28,7 +28,7 @@ int main()
     if (gop == NULL)
         return EXIT_FAILURE;
 
-    h264_stream *stream = h264_stream_init("/home/wmh/wmh/rtmp/example/files/test.h264", gop);
+    h264_stream *stream = h264_stream_init("/home/wmh/rtmp_server/example/files/test.h264", gop);
     if (stream == NULL)
         return EXIT_FAILURE;
 
@@ -39,12 +39,8 @@ int main()
         ERR("create rtmp server error");
         return EXIT_FAILURE;
     }
-
-    sche_ptr scher = net_create_scheduler();
-    if (scher == NULL)
-        return EXIT_FAILURE;
-
-    timer_ptr pull_stream = net_add_timer_task(scher, 0, 30, rtmp_pull_h264_stream, (void *)stream);
+ 
+    h264_start_stream(stream);
 
     while (exit_flags)
         sleep(1);

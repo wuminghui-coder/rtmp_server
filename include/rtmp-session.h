@@ -43,9 +43,6 @@ typedef struct
     buffer_ptr buffer;
     rtmp_config config;
     sche_ptr scher;
-    timer_ptr pull_stream;
-    int times;
-    int flags;
     gop_cache *gop;
 } rtmp_session, *rtmp_ptr;
 

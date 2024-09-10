@@ -16,6 +16,9 @@ typedef struct
     int status;
     int type;
     void *stream;
+    int times;
+    int flags;
+    long long gtimess;
     int (*start_stream)(void *stream, frame_info *frame);
     int (*stop_stream)(void *stream);
 } stream_info, *stream_ptr;
@@ -45,6 +48,7 @@ void gop_set_pps(gop_cache *gop, frame_info *pps);
 void gop_set_sps(gop_cache *gop, frame_info *sps);
 void gop_pull_frame_to_cache(gop_cache *gop, frame_info *frame);
 void gop_start_to_playlive(gop_cache *gop, stream_info *stream);
-frame_info *new_frame(int type, int pos, uint8_t *frame, int size);
+
+frame_info *new_frame(int type, int size, uint8_t *frame, int frame_size);
 
 #endif

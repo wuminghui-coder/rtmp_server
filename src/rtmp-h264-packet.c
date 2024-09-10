@@ -48,7 +48,8 @@ static int find_nal_unit(uint8_t* buf, int size, int* nal_start, int* nal_end)
 frame_info *rtmp_write_frame(frame_info *frame)
 {
     int frame_length = RTMP_FRAME_HEADER_LENGTH + frame->size;
-    frame_info *f = new_frame(frame->type, RTMP_FRAME_HEADER_LENGTH, frame->frame, frame_length);
+
+    frame_info *f = new_frame(frame->type, frame_length, NULL, 0);
 
     bs_t *b = bs_new(f->frame, frame_length);
     if (b == NULL)
@@ -69,7 +70,7 @@ frame_info *rtmp_write_frame(frame_info *frame)
     bs_write_bytes(b, frame->frame, frame->size);
     
     bs_free(b);
-    
+
     return f;
 }
 
@@ -79,11 +80,8 @@ frame_info *rtmp_write_avc_sequence(frame_info *sps, frame_info *pps)
         return NULL;
 
     int frame_length = sps->size + pps->size + RTMP_AVC_HEADER_LENGTH;
-
-    frame_info *f = new_frame(sps->type, RTMP_AVC_HEADER_LENGTH, sps->frame, frame_length);
-
-    bs_t *b = bs_new(f->frame, f->size);
-
+    frame_info *f = new_frame(sps->type, frame_length, NULL, 0);
+    bs_t *b = bs_new(f->frame, frame_length);
     bs_write_u8(b, 0x17);
     bs_write_u8(b, 0x00);
     bs_write_u8(b, 0x00);
@@ -105,28 +103,26 @@ frame_info *rtmp_write_avc_sequence(frame_info *sps, frame_info *pps)
     bs_write_bytes(b, pps->frame, pps->size);
 
     bs_free(b);
-
     return f;
 }
 
 static int rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int type)
 {
-    if (stream == NULL || data == NULL || size < 0)
-        return NET_FAIL;
-
-    frame_info *f = new_frame(type, 0, data, size);
-    if (f == NULL)
+    if (stream->gop == NULL || data == NULL || size < 0)
         return NET_FAIL;
 
     if (type == NAL_UNIT_TYPE_SPS)
     {
-        gop_set_sps(stream->g, f);
-    } else if(type == NAL_UNIT_TYPE_PPS)
+        frame_info *f = new_frame(type, size, data, size);
+        gop_set_sps(stream->gop, f);
+    }
+    else if(type == NAL_UNIT_TYPE_PPS)
     {
-        gop_set_pps(stream->g, f);
-    } else 
-    {
-        gop_pull_frame_to_cache(stream->g, f);
+        frame_info *f = new_frame(type, size, data, size);
+        gop_set_pps(stream->gop, f);
+    }
+    else {
+        shm_cache_put(stream->ring_cache, data, size, type);
     }
     return NET_SUCCESS;
 }
@@ -171,6 +167,23 @@ void h264_stream_unint(h264_stream *stream)
     net_free(stream);
 }
 
+int rtmp_push_h264_stream(void *args)
+{
+    h264_stream * stream  = (h264_stream *)args;
+    if (stream == NULL || stream->ring_cache == NULL)
+       return NET_FAIL;
+
+    cache_buffer *b = shm_cache_get(stream->ring_cache);
+    if (b == NULL)
+        return NET_FAIL;
+
+    frame_info *f = new_frame(b->type, b->size, b->payload, b->size);
+    gop_pull_frame_to_cache(stream->gop, f);
+    //ERR("get %d", f->type); 
+    net_free(b);
+    return NET_SUCCESS;
+}
+
 h264_stream *h264_stream_init(const char *file, gop_cache *gop)
 {
     int code = NET_FAIL;
@@ -189,7 +202,11 @@ h264_stream *h264_stream_init(const char *file, gop_cache *gop)
         if (stream->buffer == NULL)
             break;
 
-        stream->g = gop;
+        stream->ring_cache = shm_cache_init(4096 * 1000);
+
+        stream->scher = net_create_scheduler();
+
+        stream->gop = gop;
 
         code = NET_SUCCESS;
     } while (0);
@@ -199,5 +216,17 @@ h264_stream *h264_stream_init(const char *file, gop_cache *gop)
         h264_stream_unint(stream);
         return NULL;
     }
+
     return stream;
+}
+
+void h264_start_stream(h264_stream * stream)
+{
+    stream->pull_stream = net_add_timer_task(stream->scher, 0, 10, rtmp_pull_h264_stream, (void *)stream);
+    if (stream->pull_stream == NULL)
+        return ;
+
+    stream->push_stream = net_add_timer_task(stream->scher, 0, 40, rtmp_push_h264_stream, (void *)stream);
+    if (stream->push_stream == NULL)
+        return ;
 }
