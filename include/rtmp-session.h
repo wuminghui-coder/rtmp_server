@@ -43,7 +43,7 @@ typedef struct
     buffer_ptr buffer;
     rtmp_config config;
     sche_ptr scher;
-    gop_cache *gop;
+    rtmp_gop *gop;
 } rtmp_session, *rtmp_ptr;
 
 int rtmp_recv_msg(void *user);

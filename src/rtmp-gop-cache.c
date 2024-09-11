@@ -1,23 +1,24 @@
 #include "rtmp-gop-cache.h"
 #include "rtmp-h264-packet.h"
 #include "net-task.h"
+#include "rtmp-push-stream.h"
 
-gop_cache *create_gop_cache(void)
+rtmp_gop *new_gop_cache(void)
 {
-    gop_cache *gop = (gop_cache *)calloc(1, sizeof(gop_cache));
+    rtmp_gop *gop = (rtmp_gop *)calloc(1, sizeof(rtmp_gop));
     if (!gop)
         return NULL;
     
-    gop->frame_sequence = (gop_list *)calloc(1, sizeof(gop_list));
+    gop->frame_sequence = (gop_cache *)calloc(1, sizeof(gop_cache));
     if (!gop->frame_sequence)
         return NULL;
 
-    gop->stream_sequence = (stream_list *)calloc(1, sizeof(stream_list));
-    if (!gop->stream_sequence)
+    gop->client_sequence = (playlive_client *)calloc(1, sizeof(playlive_client));
+    if (!gop->client_sequence)
         return NULL;
 
     INIT_LIST_HEAD(&gop->frame_sequence->list);
-    INIT_LIST_HEAD(&gop->stream_sequence->list);
+    INIT_LIST_HEAD(&gop->client_sequence->list);
 
     gop->pps = NULL;
     gop->sps = NULL;
@@ -25,7 +26,7 @@ gop_cache *create_gop_cache(void)
     return gop;
 }
 
-void gop_set_pps(gop_cache *gop, frame_info *pps)
+void gop_set_pps(rtmp_gop *gop, frame_package *pps)
 {
     if (!gop || !pps)
         return;
@@ -35,7 +36,7 @@ void gop_set_pps(gop_cache *gop, frame_info *pps)
     gop->pps = pps;
 }
 
-void gop_set_sps(gop_cache *gop, frame_info *sps)
+void gop_set_sps(rtmp_gop *gop, frame_package *sps)
 {
     if (!gop || !sps)
         return;
@@ -46,56 +47,53 @@ void gop_set_sps(gop_cache *gop, frame_info *sps)
     gop->sps = sps;
 }
 
-static void push_frame_to_stream(gop_cache *gop, frame_info *frame)
+static void _push_frame_to_playlive(rtmp_gop *gop, frame_package *frame)
 {
-    frame_info *f = rtmp_write_frame(frame);
-    frame_info *sp = NULL;
-    if (f->frame == NAL_UNIT_TYPE_CODED_SLICE_IDR)
-    {
-        //sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
-    }
+    if (!gop || !frame)
+        return;
 
-    stream_list *task_node = NULL;
-    stream_list *temp_node = NULL;
-    list_for_each_entry_safe(task_node, temp_node, &gop->stream_sequence->list, list)
+    frame_package *f = rtmp_write_frame(frame);
+    if (f == NULL)
+        return;
+
+    playlive_client *client_node = NULL;
+    playlive_client *temp_node = NULL;
+    list_for_each_entry_safe(client_node, temp_node, &gop->client_sequence->list, list)
     {
-        stream_ptr stream = (stream_ptr)task_node->stream;
-        if (stream == NULL)
+        playlive_ptr client = (playlive_ptr)client_node->client;
+        if (client == NULL)
             continue;
 
-        if (sp)
-            stream->start_stream(stream, sp);
-
-        if (stream->start_stream)
-            stream->start_stream(stream, f);
+        if (client->start_stream)
+            client->start_stream(client, f);
     }
 }
 
-static void push_cache_to_playlive(gop_cache *gop, stream_info *stream)
+static void push_cache_to_playlive(rtmp_gop *gop, playlive_info *stream)
 {
-    gop_list *task_node = NULL;
-    gop_list *temp_node = NULL;
+    gop_cache *client_node = NULL;
+    gop_cache *temp_node = NULL;
 
-    frame_info *sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
+    frame_package *sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
     if (stream->start_stream)
         stream->start_stream(stream, sp);
 
-    list_for_each_entry_safe(task_node, temp_node, &gop->frame_sequence->list, list)
+    list_for_each_entry_safe(client_node, temp_node, &gop->frame_sequence->list, list)
     {
-        frame_info *frame = (frame_info *)task_node->frame;
+        frame_package *frame = (frame_package *)client_node->frame;
         if (frame == NULL)
             continue;
 
-        frame_info *f = rtmp_write_frame(frame);
+        frame_package *f = rtmp_write_frame(frame);
 
         if (stream->start_stream)
             stream->start_stream(stream, f);
     }
 }
 
-static void push_frame_to_gop(gop_cache *gop, frame_info *frame)
+static void push_frame_to_gop(rtmp_gop *gop, frame_package *frame)
 {
-    gop_list *new_task = (gop_list *)calloc(1, sizeof(gop_list));
+    gop_cache *new_task = (gop_cache *)calloc(1, sizeof(gop_cache));
     if (!new_task)
         return;
 
@@ -104,26 +102,26 @@ static void push_frame_to_gop(gop_cache *gop, frame_info *frame)
     list_add_tail(&new_task->list, &gop->frame_sequence->list);
 }
 
-static void gop_reset_cache(gop_cache *gop)
+static void gop_reset_cache(rtmp_gop *gop)
 {
-    gop_list *task_node = NULL;
-    gop_list *temp_node = NULL;
-    list_for_each_entry_safe(task_node, temp_node, &gop->frame_sequence->list, list)
+    gop_cache *client_node = NULL;
+    gop_cache *temp_node = NULL;
+    list_for_each_entry_safe(client_node, temp_node, &gop->frame_sequence->list, list)
     {
-        list_del(&task_node->list);
-        if ((frame_info *)task_node->frame) 
-            net_free(task_node->frame->frame)                     
-            net_free(task_node->frame)                          
-        net_free(task_node)         
+        list_del(&client_node->list);
+        if ((frame_package *)client_node->frame) 
+            //net_free(client_node->frame->frame)                     
+            net_free(client_node->frame)                          
+        net_free(client_node)         
     }
 }
 
-void gop_pull_frame_to_cache(gop_cache *gop, frame_info *frame)
+void gop_pull_frame_to_cache(rtmp_gop *gop, frame_package *frame)
 {
     if (!gop || !frame)
         return;
 
-    push_frame_to_stream(gop, frame);
+    _push_frame_to_playlive(gop, frame);
 
     if (frame->type == NAL_UNIT_TYPE_CODED_SLICE_IDR)
     {
@@ -134,34 +132,34 @@ void gop_pull_frame_to_cache(gop_cache *gop, frame_info *frame)
     push_frame_to_gop(gop, frame);
 }
 
-static void register_stream(gop_cache *gop, stream_info *stream)
+static void register_stream(rtmp_gop *gop, playlive_info *stream)
 {
-    stream_list *new_task = (stream_list *)calloc(1, sizeof(stream_list));
+    playlive_client *new_task = (playlive_client *)calloc(1, sizeof(playlive_client));
     if (!new_task)
         return;
 
-    new_task->stream = stream;
+    new_task->client = stream;
 
-    list_add_tail(&new_task->list, &gop->stream_sequence->list);
+    list_add_tail(&new_task->list, &gop->client_sequence->list);
 }
 
-static void unregister_stream(gop_cache *gop, stream_info *stream)
+static void unregister_stream(rtmp_gop *gop, playlive_info *stream)
 {
-    stream_list *task_node = NULL;
-    stream_list *temp_node = NULL;
-    list_for_each_entry_safe(task_node, temp_node, &gop->stream_sequence->list, list)
+    playlive_client *client_node = NULL;
+    playlive_client *temp_node = NULL;
+    list_for_each_entry_safe(client_node, temp_node, &gop->client_sequence->list, list)
     {
-        if (task_node && task_node->stream == stream) 
+        if (client_node && client_node->client == stream) 
         {
-            list_del(&task_node->list);
-            if ((stream_info *)task_node->stream)                      
-                net_free(task_node->stream)                          
-            net_free(task_node)   
+            list_del(&client_node->list);
+            if ((playlive_info *)client_node->client)                      
+                net_free(client_node->client)                          
+            net_free(client_node)   
         }               
     }                                                
 }
 
-void gop_start_to_playlive(gop_cache *gop, stream_info *stream)
+void gop_start_to_playlive(rtmp_gop *gop, playlive_info *stream)
 {
     if (!gop || !stream)
         return;
@@ -171,23 +169,18 @@ void gop_start_to_playlive(gop_cache *gop, stream_info *stream)
     register_stream(gop, stream);
 }
 
-frame_info *new_frame(int type, int size, uint8_t *frame, int frame_size)
+frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size)
 {
-    frame_info *f = (frame_info *)calloc(1, sizeof(frame_info));
+    frame_package *f = (frame_package *)calloc(1, sizeof(frame_package) + size);
     if (f == NULL)
         return NULL;
-
-    f->frame = (uint8_t *)calloc(1, size);
-    if (f->frame == NULL)
-    {
-        net_free(f);
-        return NULL;
-    }
 
     if (frame && frame_size <= size)
         memcpy(f->frame, frame, frame_size);
 
     f->size  = size;
     f->type  = type;
+    f->counter = ATOMIC_VAR_INIT(0);
+    
     return f;
 }

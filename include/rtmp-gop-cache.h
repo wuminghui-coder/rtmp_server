@@ -1,15 +1,15 @@
 #ifndef __RTMP_GOP_CACHE_H__
 #define __RTMP_GOP_CACHE_H__
 #include "net-common.h"
-
-#define RTMP_SERVER 1
+#include <stdatomic.h>
 
 typedef struct 
 {
+    atomic_int counter;
     int type;
     int size;
-    uint8_t *frame;
-} frame_info;
+    uint8_t frame[0];
+} frame_package;
 
 typedef struct
 {
@@ -19,36 +19,36 @@ typedef struct
     int times;
     int flags;
     long long gtimess;
-    int (*start_stream)(void *stream, frame_info *frame);
+    int (*start_stream)(void *stream, frame_package *frame);
     int (*stop_stream)(void *stream);
-} stream_info, *stream_ptr;
+} playlive_info, *playlive_ptr;
 
 typedef struct
 {
-    frame_info *frame;
+    frame_package *frame;
     struct list_head list;
-} gop_list;
-
-typedef struct
-{
-    stream_info *stream;
-    struct list_head list;
-} stream_list;
-
-typedef struct
-{
-    gop_list *frame_sequence;
-    stream_list *stream_sequence;
-    frame_info *pps;
-    frame_info *sps;
 } gop_cache;
 
-gop_cache *create_gop_cache(void);
-void gop_set_pps(gop_cache *gop, frame_info *pps);
-void gop_set_sps(gop_cache *gop, frame_info *sps);
-void gop_pull_frame_to_cache(gop_cache *gop, frame_info *frame);
-void gop_start_to_playlive(gop_cache *gop, stream_info *stream);
+typedef struct
+{
+    playlive_info *client;
+    struct list_head list;
+} playlive_client;
 
-frame_info *new_frame(int type, int size, uint8_t *frame, int frame_size);
+typedef struct
+{
+    gop_cache       *frame_sequence;
+    playlive_client *client_sequence;
+    frame_package   *pps;
+    frame_package   *sps;
+} rtmp_gop;
+
+rtmp_gop *new_gop_cache(void);
+void gop_set_pps(rtmp_gop *gop, frame_package *pps);
+void gop_set_sps(rtmp_gop *gop, frame_package *sps);
+void gop_pull_frame_to_cache(rtmp_gop *gop, frame_package *frame);
+void gop_start_to_playlive(rtmp_gop *gop, playlive_info *stream);
+
+frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size);
 
 #endif

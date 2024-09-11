@@ -37,7 +37,7 @@ typedef struct
 {
     FILE *fp;
     buffer_ptr buffer;
-    gop_cache *gop;
+    rtmp_gop *gop;
     shm_cache_ptr ring_cache;
     sche_ptr scher;
     timer_ptr pull_stream;
@@ -45,10 +45,8 @@ typedef struct
 } h264_stream;
 
 void h264_stream_unint(h264_stream *stream);
-h264_stream *h264_stream_init(const char *file, gop_cache *gop);
+h264_stream *h264_stream_init(const char *file, rtmp_gop *gop);
 int rtmp_pull_h264_stream(void *args);
-frame_info *rtmp_write_frame(frame_info *frame);
-frame_info *rtmp_write_avc_sequence(frame_info *sps, frame_info *pps);
 void h264_start_stream(h264_stream * stream);
 
 #endif // !__RMTP_H264_H__

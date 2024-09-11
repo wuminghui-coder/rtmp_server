@@ -42,89 +42,10 @@ static int find_nal_unit(uint8_t* buf, int size, int* nal_start, int* nal_end)
     return (*nal_end - *nal_start);
 }
 
-#define RTMP_FRAME_HEADER_LENGTH 9
-#define RTMP_AVC_HEADER_LENGTH   16
-
-frame_info *rtmp_write_frame(frame_info *frame)
+static void rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int type)
 {
-    int frame_length = RTMP_FRAME_HEADER_LENGTH + frame->size;
-
-    frame_info *f = new_frame(frame->type, frame_length, NULL, 0);
-
-    bs_t *b = bs_new(f->frame, frame_length);
-    if (b == NULL)
-        return NULL;
-
-    if (NAL_UNIT_TYPE_CODED_SLICE_IDR == frame->type)
-        bs_write_u8(b, 0x17); //0x27
-    else 
-        bs_write_u8(b, 0x27); //0x27
-    
-    bs_write_u8(b, 0x01);
-    bs_write_u8(b, 0x00);
-    bs_write_u8(b, 0x00);
-    bs_write_u8(b, 0x00);
-
-    bs_write_u(b, 32, frame->size);
-
-    bs_write_bytes(b, frame->frame, frame->size);
-    
-    bs_free(b);
-
-    return f;
-}
-
-frame_info *rtmp_write_avc_sequence(frame_info *sps, frame_info *pps)
-{
-    if (sps == NULL || pps == NULL)
-        return NULL;
-
-    int frame_length = sps->size + pps->size + RTMP_AVC_HEADER_LENGTH;
-    frame_info *f = new_frame(sps->type, frame_length, NULL, 0);
-    bs_t *b = bs_new(f->frame, frame_length);
-    bs_write_u8(b, 0x17);
-    bs_write_u8(b, 0x00);
-    bs_write_u8(b, 0x00);
-    bs_write_u8(b, 0x00);
-    bs_write_u8(b, 0x00);
-
-    bs_write_u8(b, 0x01);
-    bs_write_u8(b, sps->frame[1]);
-    bs_write_u8(b, sps->frame[2]);
-    bs_write_u8(b, sps->frame[3]);
-    bs_write_u8(b, 0xff);
-
-    bs_write_u8(b, 0xe1);
-    bs_write_u(b, 16, sps->size);
-    bs_write_bytes(b, sps->frame, sps->size);
-    
-    bs_write_u8(b, 0x01);
-    bs_write_u(b, 16, pps->size);
-    bs_write_bytes(b, pps->frame, pps->size);
-
-    bs_free(b);
-    return f;
-}
-
-static int rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int type)
-{
-    if (stream->gop == NULL || data == NULL || size < 0)
-        return NET_FAIL;
-
-    if (type == NAL_UNIT_TYPE_SPS)
-    {
-        frame_info *f = new_frame(type, size, data, size);
-        gop_set_sps(stream->gop, f);
-    }
-    else if(type == NAL_UNIT_TYPE_PPS)
-    {
-        frame_info *f = new_frame(type, size, data, size);
-        gop_set_pps(stream->gop, f);
-    }
-    else {
+    if (stream->ring_cache && data)
         shm_cache_put(stream->ring_cache, data, size, type);
-    }
-    return NET_SUCCESS;
 }
 
 int rtmp_pull_h264_stream(void *args)
@@ -177,14 +98,25 @@ int rtmp_push_h264_stream(void *args)
     if (b == NULL)
         return NET_FAIL;
 
-    frame_info *f = new_frame(b->type, b->size, b->payload, b->size);
-    gop_pull_frame_to_cache(stream->gop, f);
-    //ERR("get %d", f->type); 
+    frame_package *f = new_frame_package(b->type, b->size, b->payload, b->size);
+
+    if (b->type == NAL_UNIT_TYPE_SPS)
+    {
+        gop_set_sps(stream->gop, f);
+    }
+    else if(b->type == NAL_UNIT_TYPE_PPS)
+    {
+        gop_set_pps(stream->gop, f);
+    }
+    else {
+        gop_pull_frame_to_cache(stream->gop, f);
+    }
+
     net_free(b);
     return NET_SUCCESS;
 }
 
-h264_stream *h264_stream_init(const char *file, gop_cache *gop)
+h264_stream *h264_stream_init(const char *file, rtmp_gop *gop)
 {
     int code = NET_FAIL;
     h264_stream * stream = NULL;

@@ -24,7 +24,7 @@ int main()
 {
     //net_exception(signal_handler); 
 
-    gop_cache *gop = create_gop_cache();
+    rtmp_gop *gop = new_gop_cache();
     if (gop == NULL)
         return EXIT_FAILURE;
 
