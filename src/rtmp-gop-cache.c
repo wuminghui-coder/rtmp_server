@@ -69,7 +69,7 @@ static void _push_frame_to_playlive(rtmp_gop *gop, frame_package *frame)
     }
 }
 
-static void push_cache_to_playlive(rtmp_gop *gop, playlive_info *stream)
+static void _push_cache_to_playlive(rtmp_gop *gop, playlive_info *stream)
 {
     gop_cache *client_node = NULL;
     gop_cache *temp_node = NULL;
@@ -164,7 +164,7 @@ void gop_start_to_playlive(rtmp_gop *gop, playlive_info *stream)
     if (!gop || !stream)
         return;
 
-    push_cache_to_playlive(gop, stream);
+    _push_cache_to_playlive(gop, stream);
 
     register_stream(gop, stream);
 }
