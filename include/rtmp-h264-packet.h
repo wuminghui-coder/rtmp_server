@@ -44,9 +44,8 @@ typedef struct
     timer_ptr push_stream;
 } h264_stream;
 
-void h264_stream_unint(h264_stream *stream);
 h264_stream *h264_stream_init(const char *file, rtmp_gop *gop);
-int rtmp_pull_h264_stream(void *args);
+void h264_stream_unint(h264_stream *stream);
 void h264_start_stream(h264_stream * stream);
 
 #endif // !__RMTP_H264_H__

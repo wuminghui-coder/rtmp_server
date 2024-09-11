@@ -48,7 +48,7 @@ static void rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int
         shm_cache_put(stream->ring_cache, data, size, type);
 }
 
-int rtmp_pull_h264_stream(void *args)
+static int _rtmp_pull_h264_stream(void *args)
 {
     h264_stream * stream  = (h264_stream *)args;
     if (stream == NULL || stream->fp <= 0 || stream->buffer == NULL)
@@ -88,7 +88,7 @@ void h264_stream_unint(h264_stream *stream)
     net_free(stream);
 }
 
-int rtmp_push_h264_stream(void *args)
+static int _rtmp_push_h264_stream(void *args)
 {
     h264_stream * stream  = (h264_stream *)args;
     if (stream == NULL || stream->ring_cache == NULL)
@@ -154,11 +154,11 @@ h264_stream *h264_stream_init(const char *file, rtmp_gop *gop)
 
 void h264_start_stream(h264_stream * stream)
 {
-    stream->pull_stream = net_add_timer_task(stream->scher, 0, 10, rtmp_pull_h264_stream, (void *)stream);
+    stream->pull_stream = net_add_timer_task(stream->scher, 0, 10, _rtmp_pull_h264_stream, (void *)stream);
     if (stream->pull_stream == NULL)
         return ;
 
-    stream->push_stream = net_add_timer_task(stream->scher, 0, 40, rtmp_push_h264_stream, (void *)stream);
+    stream->push_stream = net_add_timer_task(stream->scher, 0, 40, _rtmp_push_h264_stream, (void *)stream);
     if (stream->push_stream == NULL)
         return ;
 }

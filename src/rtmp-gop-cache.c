@@ -69,14 +69,17 @@ static void _push_frame_to_playlive(rtmp_gop *gop, frame_package *frame)
     }
 }
 
-static void _push_cache_to_playlive(rtmp_gop *gop, playlive_info *stream)
+static void _push_cache_to_playlive(rtmp_gop *gop, playlive_info *client)
 {
+    if (!gop || !client)
+        return;
+    
     gop_cache *client_node = NULL;
     gop_cache *temp_node = NULL;
 
-    frame_package *sp = rtmp_write_avc_sequence(gop->sps, gop->pps);
-    if (stream->start_stream)
-        stream->start_stream(stream, sp);
+    frame_package *avc = rtmp_write_avc_sequence(gop->sps, gop->pps);
+    if (client->start_stream)
+        client->start_stream(client, avc);
 
     list_for_each_entry_safe(client_node, temp_node, &gop->frame_sequence->list, list)
     {
@@ -85,14 +88,19 @@ static void _push_cache_to_playlive(rtmp_gop *gop, playlive_info *stream)
             continue;
 
         frame_package *f = rtmp_write_frame(frame);
+        if (f == NULL)
+            continue;
 
-        if (stream->start_stream)
-            stream->start_stream(stream, f);
+        if (client->start_stream)
+            client->start_stream(client, f);
     }
 }
 
-static void push_frame_to_gop(rtmp_gop *gop, frame_package *frame)
+static void _push_frame_to_cache(rtmp_gop *gop, frame_package *frame)
 {
+    if (!gop || !frame)
+        return;
+
     gop_cache *new_task = (gop_cache *)calloc(1, sizeof(gop_cache));
     if (!new_task)
         return;
@@ -102,17 +110,18 @@ static void push_frame_to_gop(rtmp_gop *gop, frame_package *frame)
     list_add_tail(&new_task->list, &gop->frame_sequence->list);
 }
 
-static void gop_reset_cache(rtmp_gop *gop)
+static void _gop_reset_cache(rtmp_gop *gop)
 {
+    if (!gop)
+        return;
+
     gop_cache *client_node = NULL;
-    gop_cache *temp_node = NULL;
+    gop_cache *temp_node   = NULL;
     list_for_each_entry_safe(client_node, temp_node, &gop->frame_sequence->list, list)
     {
-        list_del(&client_node->list);
-        if ((frame_package *)client_node->frame) 
-            //net_free(client_node->frame->frame)                     
-            net_free(client_node->frame)                          
-        net_free(client_node)         
+        list_del(&client_node->list);                  
+        net_free(client_node->frame);                          
+        net_free(client_node);         
     }
 }
 
@@ -124,50 +133,58 @@ void gop_pull_frame_to_cache(rtmp_gop *gop, frame_package *frame)
     _push_frame_to_playlive(gop, frame);
 
     if (frame->type == NAL_UNIT_TYPE_CODED_SLICE_IDR)
-    {
-        DBG("reset gop");
-        gop_reset_cache(gop);
-    }
-
-    push_frame_to_gop(gop, frame);
+        _gop_reset_cache(gop);
+    
+    _push_frame_to_cache(gop, frame);
 }
 
-static void register_stream(rtmp_gop *gop, playlive_info *stream)
+static void _register_client(rtmp_gop *gop, playlive_info *client)
 {
+    if (!gop || !client)
+        return;
+
     playlive_client *new_task = (playlive_client *)calloc(1, sizeof(playlive_client));
     if (!new_task)
         return;
 
-    new_task->client = stream;
+    new_task->client = client;
 
     list_add_tail(&new_task->list, &gop->client_sequence->list);
 }
 
-static void unregister_stream(rtmp_gop *gop, playlive_info *stream)
+static void _unregister_client(rtmp_gop *gop, playlive_info *client)
 {
     playlive_client *client_node = NULL;
     playlive_client *temp_node = NULL;
     list_for_each_entry_safe(client_node, temp_node, &gop->client_sequence->list, list)
     {
-        if (client_node && client_node->client == stream) 
+        if (client_node && client_node->client == client)
         {
-            list_del(&client_node->list);
-            if ((playlive_info *)client_node->client)                      
-                net_free(client_node->client)                          
+            list_del(&client_node->list);                    
+            net_free(client_node->client)                          
             net_free(client_node)   
         }               
     }                                                
 }
 
-void gop_start_to_playlive(rtmp_gop *gop, playlive_info *stream)
+void gop_start_to_playlive(rtmp_gop *gop, playlive_info *client)
 {
-    if (!gop || !stream)
+    if (!gop || !client)
         return;
 
-    _push_cache_to_playlive(gop, stream);
+    _push_cache_to_playlive(gop, client);
 
-    register_stream(gop, stream);
+    _register_client(gop, client);
 }
+
+void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client)
+{
+    if (!gop || !client)
+        return;
+
+    _unregister_client(gop, client);
+}
+
 
 frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size)
 {
@@ -183,4 +200,30 @@ frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_s
     f->counter = ATOMIC_VAR_INIT(0);
     
     return f;
+}
+
+// atomic_fetch_sub(&counter, 1);
+// int old_value = atomic_exchange(&counter, 5);
+//  int expected = 5;
+//  int desired = 10;
+//  bool success = atomic_compare_exchange_strong(&counter, &expected, desired);
+//  // 如果 counter 的值等于 expected，则将其设置为 desired 并返回 true；否则，更新 expected 为 counter 的当前值并返回 false
+//  int value = atomic_load(&counter); // 读取 counter 的值
+//  atomic_store(&counter, 20); // 将 counter 的值设置为 20
+void frame_package_release(frame_package *frame)
+{
+    if (!frame)
+        return;
+
+    atomic_fetch_sub(&frame->counter, 1);
+    if (atomic_load(&frame->counter) == 0)
+        net_free(frame);
+}
+
+void frame_package_count(frame_package *frame)
+{
+    if (!frame)
+        return;
+        
+    atomic_fetch_add(&frame->counter, 1);
 }

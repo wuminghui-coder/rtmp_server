@@ -79,7 +79,7 @@ static int rtmp_read_ondelete_stream(bs_t *b, rtmp_ptr rtmp)
 
     double stream_id = 0;
     amf_object_item items[2];
-
+	ERR("stop");
     AMF_OBJECT_ITEM_VALUE(items[0], AMF_OBJECT, "command", NULL, 0);
 	AMF_OBJECT_ITEM_VALUE(items[1], AMF_NUMBER, "streamId", &stream_id, 8);
     return amf_read_item(b, items, sizeof(items) / sizeof(items[0]));

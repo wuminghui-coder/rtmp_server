@@ -9,57 +9,54 @@ typedef struct
     frame_package  *frame;
 } push_stream;
 
-//atomic_fetch_sub(&counter, 1);
-//int old_value = atomic_exchange(&counter, 5);
-// int expected = 5;
-// int desired = 10;
-// bool success = atomic_compare_exchange_strong(&counter, &expected, desired);
-// // 如果 counter 的值等于 expected，则将其设置为 desired 并返回 true；否则，更新 expected 为 counter 的当前值并返回 false
-// int value = atomic_load(&counter); // 读取 counter 的值
-// atomic_store(&counter, 20); // 将 counter 的值设置为 20
-
-int start_push_stream(void *data)
+static int _start_push_stream(void *data)
 {
-    push_stream * ps = (push_stream *)data;
-    playlive_info * s = (playlive_info *)ps->client;
-    long long timess = get_time_ms() - s->gtimess;
-    //ERR("time: %lld, %d", timess, frame->type);
-    s->gtimess += timess;
-    rtmp_server_send_key_frame(s->stream, ps->frame->frame, ps->frame->size, s->times);
-    s->times += 40;
-    atomic_fetch_sub(&ps->frame->counter, 1);
-    int value = atomic_load(&ps->frame->counter);
-    if (value == 0)
-    {
-        net_free(ps->frame);
-    }
-    net_free(ps);
+    if (!data)
+        return NET_FAIL;
+    push_stream *stream = (push_stream *)data;
+    playlive_info * client = (playlive_info *)stream->client;
+
+    rtmp_server_send_key_frame(client->service, stream->frame->frame, stream->frame->size, client->interval);
+    frame_package_release(stream->frame);
+    net_free(stream);
+
+    long long interval = client->base_time;
+    client->base_time = get_time_ms();
+    //ERR("time: %lld", client->base_time - interval);
+    client->interval += 40;
+    return NET_SUCCESS;
 }
 
-int rtmp_start_stream(void *stream, frame_package *frame)
+static void _rtmp_start_stream(void *client, frame_package *frame)
 {
-    push_stream * ps = (push_stream *)calloc(1, sizeof(push_stream));
-    ps->frame = frame;
-    ps->client = stream;
-    atomic_fetch_add(&frame->counter, 1);
-    playlive_info * s   = (playlive_info *)ps->client;
-    rtmp_ptr srtmp  = (rtmp_ptr)s->stream;
-    net_add_trigger_task(srtmp->scher, start_push_stream, ps, 0);
+    if (!client || !frame)
+        return;
+
+    push_stream * stream = (push_stream *)calloc(1, sizeof(push_stream));
+    if (!stream)
+        return;
+    stream->frame  = frame;
+    stream->client = client;
+    frame_package_count(frame);
+    rtmp_ptr rtmp = (rtmp_ptr)stream->client->service;
+    net_add_trigger_task(rtmp->scher, _start_push_stream, stream, 0);
 }
 
 int rtmp_start_push_stream(rtmp_ptr rtmp)
 {
-    playlive_info * s = (playlive_info *)calloc(1, sizeof(playlive_info));
+    if (!rtmp)
+        return NET_FAIL;
 
-    s->gtimess      = get_time_ms();
-    s->times        = 1000;
-    s->flags        = 0;
-    s->stream       = rtmp;
-    s->start_stream = rtmp_start_stream;
-    s->type         = 1;
+    playlive_ptr client = (playlive_ptr)calloc(1, sizeof(playlive_info));
+    if (!client)
+        return NET_FAIL;
 
-    gop_start_to_playlive(rtmp->gop, s);
-
+    client->base_time = get_time_ms();
+    client->interval = 1000;
+    client->service = rtmp;
+    client->start_stream = _rtmp_start_stream;
+    rtmp->client = client;
+    gop_start_to_playlive(rtmp->gop, client);
     return NET_SUCCESS;
 }
 

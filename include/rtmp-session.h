@@ -44,6 +44,7 @@ typedef struct
     rtmp_config config;
     sche_ptr scher;
     rtmp_gop *gop;
+    playlive_ptr client;
 } rtmp_session, *rtmp_ptr;
 
 int rtmp_recv_msg(void *user);

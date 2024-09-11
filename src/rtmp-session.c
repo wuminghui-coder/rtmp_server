@@ -2,6 +2,7 @@
 #include "rtmp-send-message.h"
 #include "rtmp-recv-event.h"
 #include "rtmp-push-stream.h"
+#include "rtmp-gop-cache.h"
 
 int rtmp_parse_packet(rtmp_ptr rtmp)
 {
@@ -119,6 +120,7 @@ void *rtmp_create_session(SOCKET fd, buffer_ptr buffer, sche_ptr scher, void *go
     rtmp->config.out_chunk_size = RTMP_OUTPUT_CHUNK_SIZE;
     rtmp->scher = scher;
     rtmp->gop = gop;
+    rtmp->client = NULL;
     return rtmp;
 }
 
@@ -130,6 +132,9 @@ int rtmp_detele_session(void *user)
     rtmp_ptr rtmp = (rtmp_ptr)user;
     if (rtmp->pool)
         net_free(rtmp->pool);
+
+    if (rtmp->client)
+        gop_stop_to_playlive(rtmp->gop, rtmp->client);
 
     if (rtmp->send_buffer)
         bs_free(rtmp->send_buffer);

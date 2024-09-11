@@ -13,14 +13,11 @@ typedef struct
 
 typedef struct
 {
-    int status;
-    int type;
-    void *stream;
-    int times;
-    int flags;
-    long long gtimess;
-    int (*start_stream)(void *stream, frame_package *frame);
-    int (*stop_stream)(void *stream);
+    int interval;
+    long long base_time;
+    void *service;
+    void (*start_stream)(void *service, frame_package *frame);
+    void (*stop_stream)(void *service);
 } playlive_info, *playlive_ptr;
 
 typedef struct
@@ -47,8 +44,12 @@ rtmp_gop *new_gop_cache(void);
 void gop_set_pps(rtmp_gop *gop, frame_package *pps);
 void gop_set_sps(rtmp_gop *gop, frame_package *sps);
 void gop_pull_frame_to_cache(rtmp_gop *gop, frame_package *frame);
+
 void gop_start_to_playlive(rtmp_gop *gop, playlive_info *stream);
+void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client);
 
 frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size);
+void frame_package_release(frame_package *frame);
+void frame_package_count(frame_package *frame);
 
 #endif
