@@ -18,6 +18,7 @@ static int _start_push_stream(void *data)
 
     rtmp_server_send_key_frame(client->service, stream->frame->frame, stream->frame->size, client->interval);
     frame_package_release(stream->frame);
+    stream->frame = NULL;
     net_free(stream);
 
     long long interval = client->base_time;

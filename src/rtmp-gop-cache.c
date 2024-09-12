@@ -17,6 +17,8 @@ rtmp_gop *new_gop_cache(void)
     if (!gop->client_sequence)
         return NULL;
 
+    pthread_mutex_init(&gop->lock, NULL);
+    //pthread_mutex_destroy(&lock);
     INIT_LIST_HEAD(&gop->frame_sequence->list);
     INIT_LIST_HEAD(&gop->client_sequence->list);
 
@@ -30,21 +32,29 @@ void gop_set_pps(rtmp_gop *gop, frame_package *pps)
 {
     if (!gop || !pps)
         return;
+    pthread_mutex_lock(&gop->lock);
 
     if (gop->pps)
         net_free(gop->pps);
     gop->pps = pps;
+
+    pthread_mutex_unlock(&gop->lock); 
+
 }
 
 void gop_set_sps(rtmp_gop *gop, frame_package *sps)
 {
     if (!gop || !sps)
         return;
+    pthread_mutex_lock(&gop->lock);
 
     if (gop->sps)
         net_free(gop->sps);
 
     gop->sps = sps;
+
+    pthread_mutex_unlock(&gop->lock); 
+
 }
 
 static void _push_frame_to_playlive(rtmp_gop *gop, frame_package *frame)
@@ -130,12 +140,16 @@ void gop_pull_frame_to_cache(rtmp_gop *gop, frame_package *frame)
     if (!gop || !frame)
         return;
 
+    pthread_mutex_lock(&gop->lock);
+
     _push_frame_to_playlive(gop, frame);
 
     if (frame->type == NAL_UNIT_TYPE_CODED_SLICE_IDR)
         _gop_reset_cache(gop);
     
     _push_frame_to_cache(gop, frame);
+
+    pthread_mutex_unlock(&gop->lock); 
 }
 
 static void _register_client(rtmp_gop *gop, playlive_info *client)
@@ -172,9 +186,13 @@ void gop_start_to_playlive(rtmp_gop *gop, playlive_info *client)
     if (!gop || !client)
         return;
 
+    pthread_mutex_lock(&gop->lock);
+
     _push_cache_to_playlive(gop, client);
 
     _register_client(gop, client);
+
+    pthread_mutex_unlock(&gop->lock); 
 }
 
 void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client)
@@ -182,7 +200,11 @@ void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client)
     if (!gop || !client)
         return;
 
+    pthread_mutex_lock(&gop->lock);
+
     _unregister_client(gop, client);
+
+    pthread_mutex_unlock(&gop->lock); 
 }
 
 

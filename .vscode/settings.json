@@ -17,6 +17,9 @@
         "string": "c",
         "list": "c",
         "rtmp-gop-cache.h": "c",
-        "rtmp-session.h": "c"
+        "rtmp-session.h": "c",
+        "mutex": "c",
+        "pthread.h": "c",
+        "random": "c"
     }
 }

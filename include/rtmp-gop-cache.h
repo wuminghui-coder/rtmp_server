@@ -2,6 +2,7 @@
 #define __RTMP_GOP_CACHE_H__
 #include "net-common.h"
 #include <stdatomic.h>
+#include <pthread.h>
 
 typedef struct 
 {
@@ -38,6 +39,7 @@ typedef struct
     playlive_client *client_sequence;
     frame_package   *pps;
     frame_package   *sps;
+    pthread_mutex_t lock;
 } rtmp_gop;
 
 rtmp_gop *new_gop_cache(void);
