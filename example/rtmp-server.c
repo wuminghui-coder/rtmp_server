@@ -22,7 +22,7 @@ void signal_handler(int signl)
 
 int main()
 {
-    //net_exception(signal_handler); 
+    net_exception(signal_handler); 
 
     rtmp_gop *gop = new_gop_cache();
     if (gop == NULL)

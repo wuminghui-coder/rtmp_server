@@ -249,3 +249,21 @@ void frame_package_count(frame_package *frame)
         
     atomic_fetch_add(&frame->counter, 1);
 }
+
+playlive_ptr new_playlive(void *server, stream_function start_stream)
+{
+    if (!server || !start_stream)
+        return NULL;
+        
+    playlive_ptr client = (playlive_ptr)calloc(1, sizeof(playlive_info));
+    if (!client)
+        return NULL;  
+
+    client->base_time     = 1000; 
+    client->interval      = 40;
+    client->interval_test = get_time_ms(); 
+    client->service       = server;
+    client->start_stream  = start_stream;
+
+    return client;
+}

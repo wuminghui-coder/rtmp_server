@@ -3,28 +3,20 @@
 #include "rtmp-h264-packet.h"
 #include "rtmp-gop-cache.h"
 
-typedef struct 
-{
-    playlive_ptr client;
-    frame_package  *frame;
-} push_stream;
-
 static int _start_push_stream(void *data)
 {
     if (!data)
         return NET_FAIL;
-    push_stream *stream = (push_stream *)data;
-    playlive_info * client = (playlive_info *)stream->client;
 
-    rtmp_server_send_key_frame(client->service, stream->frame->frame, stream->frame->size, client->interval);
-    frame_package_release(stream->frame);
-    stream->frame = NULL;
-    net_free(stream);
+    frame_package *frame = (frame_package *)data;
+    playlive_ptr client = (playlive_ptr)frame->load;
 
-    long long interval = client->base_time;
-    client->base_time = get_time_ms();
-    //ERR("time: %lld", client->base_time - interval);
-    client->interval += 40;
+    rtmp_server_send_key_frame(client->service, frame->frame, frame->size, client->base_time);
+    client->base_time += client->interval;
+    long long sss = client->interval_test;
+    client->interval_test = get_time_ms();
+    //ERR("----------%lld", client->interval_test - sss);
+    frame_package_release(frame);
     return NET_SUCCESS;
 }
 
@@ -33,31 +25,28 @@ static void _rtmp_start_stream(void *client, frame_package *frame)
     if (!client || !frame)
         return;
 
-    push_stream * stream = (push_stream *)calloc(1, sizeof(push_stream));
-    if (!stream)
+    rtmp_ptr rtmp = (rtmp_ptr) ((playlive_ptr)client)->service;
+    if (!rtmp)
         return;
-    stream->frame  = frame;
-    stream->client = client;
+
+    frame->load = client;
     frame_package_count(frame);
-    rtmp_ptr rtmp = (rtmp_ptr)stream->client->service;
-    net_add_trigger_task(rtmp->scher, _start_push_stream, stream, 0);
+    net_add_trigger_task(rtmp->scher, _start_push_stream, frame, 0);
 }
 
 int rtmp_start_push_stream(rtmp_ptr rtmp)
 {
-    if (!rtmp)
+    if (!rtmp || !rtmp->gop)
         return NET_FAIL;
 
-    playlive_ptr client = (playlive_ptr)calloc(1, sizeof(playlive_info));
-    if (!client)
+    playlive_ptr client = new_playlive(rtmp, _rtmp_start_stream);
+    if (client == NULL)
         return NET_FAIL;
-
-    client->base_time = get_time_ms();
-    client->interval = 1000;
-    client->service = rtmp;
-    client->start_stream = _rtmp_start_stream;
+  
     rtmp->client = client;
+
     gop_start_to_playlive(rtmp->gop, client);
+
     return NET_SUCCESS;
 }
 

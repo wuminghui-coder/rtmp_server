@@ -9,15 +9,19 @@ typedef struct
     atomic_int counter;
     int type;
     int size;
+    void *load;
     uint8_t frame[0];
 } frame_package;
+
+typedef void (*stream_function)(void *service, frame_package *frame);
 
 typedef struct
 {
     int interval;
     long long base_time;
+    long long interval_test;
     void *service;
-    void (*start_stream)(void *service, frame_package *frame);
+    stream_function start_stream;
     void (*stop_stream)(void *service);
 } playlive_info, *playlive_ptr;
 
@@ -53,5 +57,6 @@ void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client);
 frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size);
 void frame_package_release(frame_package *frame);
 void frame_package_count(frame_package *frame);
+playlive_ptr new_playlive(void *server, stream_function start_stream);
 
 #endif

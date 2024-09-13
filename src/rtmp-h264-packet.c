@@ -131,14 +131,10 @@ void read_vui_parameters(sps_t* sps, bs_t* b)
         sps->vui.chroma_sample_loc_type_bottom_field = bs_read_ue(b);
     }
     sps->vui.timing_info_present_flag = bs_read_u1(b);
-    ERR("------%d", sps->vui.timing_info_present_flag);
     if( sps->vui.timing_info_present_flag )
     {
         sps->vui.num_units_in_tick = bs_read_u(b, 32);
         sps->vui.time_scale = bs_read_u(b, 32);
-
-        ERR("-----------%d", sps->vui.num_units_in_tick/sps->vui.time_scale);
-
         sps->vui.fixed_frame_rate_flag = bs_read_u1(b);
     }
     sps->vui.nal_hrd_parameters_present_flag = bs_read_u1(b);
@@ -271,7 +267,6 @@ void read_seq_parameter_set_rbsp(sps_t* sps, bs_t* b)
     {
         read_vui_parameters(sps, b);
     }
-    ERR("%d", sps->vui_parameters_present_flag);
 }
 
 static void rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int type)
@@ -279,12 +274,11 @@ static void rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int
     if (stream->ring_cache && data)
         shm_cache_put(stream->ring_cache, data, size, type);
 
-    // if (type == NAL_UNIT_TYPE_SPS)
-    // {
-    //     bs_t* bs = bs_new(data, size);
-    //     sps_t* sps = (sps_t*)calloc(1, sizeof(sps_t));
-    //     read_seq_parameter_set_rbsp(sps, bs);
-    // }
+    if (list_count_nodes(&stream->ring_cache->record_list->list) == 200)
+    {
+        net_modify_timer_task
+        stream->pull_stream
+    }
 }
 
 static int _rtmp_pull_h264_stream(void *args)
@@ -338,12 +332,13 @@ static int _rtmp_push_h264_stream(void *args)
         return NET_FAIL;
 
     frame_package *f = new_frame_package(b->type, b->size, b->payload, b->size);
-
+    if (f == NULL)
+    {
+        net_free(b);
+        return NET_FAIL;
+    }
     if (b->type == NAL_UNIT_TYPE_SPS)
     {
-        // bs_t* bs = bs_new(b->payload, b->size);
-        // sps_t* sps = (sps_t*)calloc(1, sizeof(sps_t));
-        // read_seq_parameter_set_rbsp(sps, bs);
         gop_set_sps(stream->gop, f);
     }
     else if(b->type == NAL_UNIT_TYPE_PPS)
@@ -372,11 +367,11 @@ h264_stream *h264_stream_init(const char *file, rtmp_gop *gop)
         if (stream->fp == NULL)
             break;
 
-        stream->buffer = buffer_init(1024 * 15);
+        stream->buffer = buffer_init(1024 * 1024);
         if (stream->buffer == NULL)
             break;
 
-        stream->ring_cache = shm_cache_init(4096 * 1000 * 100);
+        stream->ring_cache = shm_cache_init(1024 * 1024 * 10);
 
         stream->scher = net_create_scheduler();
 
@@ -400,7 +395,7 @@ void h264_start_stream(h264_stream * stream)
     if (stream->pull_stream == NULL)
         return ;
 
-    stream->push_stream = net_add_timer_task(stream->scher, 0, 40, _rtmp_push_h264_stream, (void *)stream);
+    stream->push_stream = net_add_timer_task(stream->scher, 1000, 40, _rtmp_push_h264_stream, (void *)stream);
     if (stream->push_stream == NULL)
         return ;
 }
