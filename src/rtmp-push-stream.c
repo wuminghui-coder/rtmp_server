@@ -3,20 +3,29 @@
 #include "rtmp-h264-packet.h"
 #include "rtmp-gop-cache.h"
 
+typedef struct 
+{
+    frame_package *frame;
+    playlive_ptr client;
+} stream_info;
+
 static int _start_push_stream(void *data)
 {
     if (!data)
         return NET_FAIL;
 
-    frame_package *frame = (frame_package *)data;
-    playlive_ptr client = (playlive_ptr)frame->load;
+    stream_info * stream = (stream_info *)data;
+
+    frame_package *frame = (frame_package *)stream->frame;
+    playlive_ptr client = (playlive_ptr)stream->client;
 
     rtmp_server_send_key_frame(client->service, frame->frame, frame->size, client->base_time);
     client->base_time += client->interval;
     long long sss = client->interval_test;
     client->interval_test = get_time_ms();
-    //ERR("----------%lld", client->interval_test - sss);
+    //ERR("----------%lld,  %lld", client->interval_test - sss, client->base_time);
     frame_package_release(frame);
+    net_free(stream);
     return NET_SUCCESS;
 }
 
@@ -29,9 +38,16 @@ static void _rtmp_start_stream(void *client, frame_package *frame)
     if (!rtmp)
         return;
 
-    frame->load = client;
+    stream_info * stream = (stream_info *)calloc(1, sizeof(stream_info));
+    if (stream == NULL)
+        return;
+
+    stream->client = client;
+    stream->frame  = frame;
+
     frame_package_count(frame);
-    net_add_trigger_task(rtmp->scher, _start_push_stream, frame, 0);
+
+    net_add_trigger_task(rtmp->scher, _start_push_stream, stream, 0);
 }
 
 int rtmp_start_push_stream(rtmp_ptr rtmp)
@@ -39,7 +55,7 @@ int rtmp_start_push_stream(rtmp_ptr rtmp)
     if (!rtmp || !rtmp->gop)
         return NET_FAIL;
 
-    playlive_ptr client = new_playlive(rtmp, 40, _rtmp_start_stream);
+    playlive_ptr client = new_playlive(rtmp, 33, _rtmp_start_stream);
     if (client == NULL)
         return NET_FAIL;
   

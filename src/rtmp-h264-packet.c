@@ -408,7 +408,7 @@ void h264_start_stream(h264_stream * stream)
     if (stream->pull_stream == NULL)
         return ;
 
-    stream->push_stream = net_add_timer_task(stream->scher, 1000, 40, _rtmp_push_h264_stream, (void *)stream);
+    stream->push_stream = net_add_timer_task(stream->scher, 1000, 33, _rtmp_push_h264_stream, (void *)stream);
     if (stream->push_stream == NULL)
         return ;
 }

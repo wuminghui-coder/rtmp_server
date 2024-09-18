@@ -14,6 +14,7 @@
 #define RTMP_LEVEL_STATUS	"status"
 #define RTMP_LEVEL_ERROR	"error"
 #define RTMP_LEVEL_FINISH	"finish" // ksyun cdn
+#define RTMP_WINDOW_SIZE    5000000
 
 int rtmp_reply_connect(rtmp_ptr rtmp, int code, double transactionId);
 int rtmp_reply_create_stream(rtmp_ptr rtmp, int code, double transactionId);

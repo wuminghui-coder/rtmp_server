@@ -274,8 +274,8 @@ playlive_ptr new_playlive(void *server, int interval, stream_function start_stre
     if (!client)
         return NULL;  
 
-    client->base_time     = 1000; 
-    client->interval      = 40;
+    client->base_time     = 1000;
+    client->interval      = interval;
     client->interval_test = get_time_ms(); 
     client->service       = server;
     client->start_stream  = start_stream;

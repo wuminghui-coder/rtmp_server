@@ -128,7 +128,11 @@ int rtmp_detele_session(void *user)
         net_free(rtmp->pool);
 
     if (rtmp->client)
+    {
         gop_stop_to_playlive(rtmp->gop, rtmp->client);
+        rtmp->client = NULL;
+    }
+        
 
     if (rtmp->send_buffer)
         bs_free(rtmp->send_buffer);

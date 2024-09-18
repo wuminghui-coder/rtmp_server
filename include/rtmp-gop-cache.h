@@ -9,7 +9,6 @@ typedef struct
     atomic_int counter;
     int type;
     int size;
-    void *load;
     uint8_t frame[0];
 } frame_package;
 

@@ -6,10 +6,10 @@ int rtmp_reply_connect(rtmp_ptr rtmp, int code, double transactionId)
     if (rtmp == NULL)
         return NET_FAIL;
 
-    rtmp_server_send_peer_bandwidth(rtmp,  5000000, RTMP_BANDWIDTH_LIMIT_DYNAMIC);
+    rtmp_server_send_peer_bandwidth(rtmp, RTMP_WINDOW_SIZE, RTMP_BANDWIDTH_LIMIT_DYNAMIC);
 
-    rtmp_server_send_acknowledgement(rtmp, 5000000);
-   
+    rtmp_server_send_acknowledgement(rtmp, RTMP_WINDOW_SIZE);
+
     rtmp_server_send_chunk_size(rtmp, RTMP_OUTPUT_CHUNK_SIZE);
 
     return rtmp_server_send_connect_result(rtmp, transactionId);

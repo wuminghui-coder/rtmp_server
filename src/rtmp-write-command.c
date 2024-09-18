@@ -419,8 +419,8 @@ int rtmp_write_onMetadata(bs_t *b)
 	amf_write_NamedDouble(b,  "displayWidth",   strlen("displayWidth"),  1280);
 	amf_write_NamedDouble(b,  "displayHeight",   strlen("displayHeight"),  720);
 	amf_write_NamedDouble(b,  "duration",   strlen("duration"),  0);
-	amf_write_NamedDouble(b,  "framerate",   strlen("framerate"),  25);
-	amf_write_NamedDouble(b,  "fps",   strlen("fps"),  25);
+	amf_write_NamedDouble(b,  "framerate",   strlen("framerate"),  30);
+	amf_write_NamedDouble(b,  "fps",         strlen("fps"),  30);
 	amf_write_NamedDouble(b,  "videodatarate",   strlen("videodatarate"),  0);
 	amf_write_NamedDouble(b,  "videocodecid",   strlen("videocodecid"),  7);
 	amf_write_NamedDouble(b,  "audiodatarate",   strlen("audiodatarate"),  0);
