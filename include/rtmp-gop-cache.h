@@ -57,6 +57,6 @@ void gop_stop_to_playlive(rtmp_gop *gop, playlive_info *client);
 frame_package *new_frame_package(int type, int size, uint8_t *frame, int frame_size);
 void frame_package_release(frame_package *frame);
 void frame_package_count(frame_package *frame);
-playlive_ptr new_playlive(void *server, stream_function start_stream);
+playlive_ptr new_playlive(void *server, int interval, stream_function start_stream);
 
 #endif

@@ -10,8 +10,8 @@ int rtmp_write_packet(rtmp_ptr rtmp, rtmp_chunk_header *header, uint8_t *payload
     payload_size = header->length;
 
     rtmp_chunk_write_header_type(rtmp->send_buffer, header);
-    //if (header->timestamp >= 0xFFFFFF)
-    //    rtmp_chunk_write_extended_timestamp(rtmp->send_buffer, header->timestamp);
+    if (header->timestamp >= 0xFFFFFF)
+       rtmp_chunk_write_extended_timestamp(rtmp->send_buffer, header->timestamp);
     int index = 0;
     while (payload_size > 0)
     {
@@ -28,9 +28,6 @@ int rtmp_write_packet(rtmp_ptr rtmp, rtmp_chunk_header *header, uint8_t *payload
             bs_reset(rtmp->send_buffer);
             bs_write_u(rtmp->send_buffer, 2, RTMP_CHUNK_TYPE_3);
             bs_write_u(rtmp->send_buffer, 6, header->csid);
-            //rtmp_chunk_write_header(rtmp->send_buffer, RTMP_CHUNK_TYPE_3, header->csid, 0, 0, 0, 0);
-            //if (header->timestamp >= 0xFFFFFF)
-            //    rtmp_chunk_write_extended_timestamp(rtmp->send_buffer, header->timestamp);
         }
     }
     return NET_SUCCESS;

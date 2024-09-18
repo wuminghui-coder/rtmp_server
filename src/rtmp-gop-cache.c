@@ -28,6 +28,22 @@ rtmp_gop *new_gop_cache(void)
     return gop;
 }
 
+void destroy_gop_cache(rtmp_gop *gop)
+{
+    if (!gop)
+        return;
+
+    gop_cache *task_node = NULL;
+    gop_cache *temp_node = NULL;
+    list_for_each_entry_safe(task_node, temp_node, &gop->frame_sequence->list, list)
+    {
+        list_del(&task_node->list);
+        net_free(task_node->frame);
+        net_free(task_node);
+    }
+    pthread_mutex_destroy(&gop->lock);
+}
+
 void gop_set_pps(rtmp_gop *gop, frame_package *pps)
 {
     if (!gop || !pps)
@@ -39,7 +55,6 @@ void gop_set_pps(rtmp_gop *gop, frame_package *pps)
     gop->pps = pps;
 
     pthread_mutex_unlock(&gop->lock); 
-
 }
 
 void gop_set_sps(rtmp_gop *gop, frame_package *sps)
@@ -250,7 +265,7 @@ void frame_package_count(frame_package *frame)
     atomic_fetch_add(&frame->counter, 1);
 }
 
-playlive_ptr new_playlive(void *server, stream_function start_stream)
+playlive_ptr new_playlive(void *server, int interval, stream_function start_stream)
 {
     if (!server || !start_stream)
         return NULL;

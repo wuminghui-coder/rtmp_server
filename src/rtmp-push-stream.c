@@ -39,7 +39,7 @@ int rtmp_start_push_stream(rtmp_ptr rtmp)
     if (!rtmp || !rtmp->gop)
         return NET_FAIL;
 
-    playlive_ptr client = new_playlive(rtmp, _rtmp_start_stream);
+    playlive_ptr client = new_playlive(rtmp, 40, _rtmp_start_stream);
     if (client == NULL)
         return NET_FAIL;
   

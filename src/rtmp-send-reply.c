@@ -43,7 +43,5 @@ int rtmp_reply_onplay(rtmp_ptr rtmp, int code, double transactionId)
 
     rtmp_server_send_onmetadata(rtmp);
 
-    rtmp_start_push_stream(rtmp);
-
-    return 0;
+    return rtmp_start_push_stream(rtmp);
 }

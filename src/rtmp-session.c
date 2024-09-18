@@ -32,9 +32,6 @@ int rtmp_parse_packet(rtmp_ptr rtmp)
             memcpy(rtmp->packet->ployload, bs_p_ptr(b), rtmp->packet->length); 
             bs_skip_bytes(b, rtmp->packet->length);
         }
-
-        //LOG("buffer size %d, pos %d, left %d, header length %d, buffer length %d", readable_bytes(rtmp->buffer), bs_pos(b),  
-        //        bs_bytes_left(b), rtmp->packet->header.length, rtmp->packet->length);
     } else {
         int residue = rtmp->packet->header.length -  rtmp->packet->length <= bs_bytes_left(b) ? rtmp->packet->header.length -  rtmp->packet->length : bs_bytes_left(b);
         uint8_t *new_load = (uint8_t *)realloc(rtmp->packet->ployload, rtmp->packet->length + residue);
@@ -63,10 +60,7 @@ int rtmp_recv_msg(void *user)
         return NET_FAIL;
 
     rtmp_ptr rtmp = (rtmp_ptr)user;
-    LOG("");
-    LOG("-----------------------------------------")
     LOG("recv size:%d", readable_bytes(rtmp->buffer));
-
     while (readable_bytes(rtmp->buffer) > 0)
     {
         if (rtmp->state == RTMP_HANDSHAKE_UNINIT)

@@ -273,12 +273,12 @@ static void rtmp_paser_packet(h264_stream * stream, uint8_t *data, int size, int
 {
     if (stream->ring_cache && data)
         shm_cache_put(stream->ring_cache, data, size, type);
-
-    if (list_count_nodes(&stream->ring_cache->record_list->list) == 200)
-    {
-        net_modify_timer_task
-        stream->pull_stream
-    }
+    // size_t size_y = list_count_nodes(&stream->ring_cache->record_list->list);
+    // ERR("size %ld", size_y);
+    // if (size_y >= 250)
+    //     net_modify_timer_task(stream->pull_stream, 40);
+    // if (size_y <= 100)
+    //     net_modify_timer_task(stream->pull_stream, 10);
 }
 
 static int _rtmp_pull_h264_stream(void *args)
@@ -312,12 +312,18 @@ void h264_stream_unint(h264_stream *stream)
     if (stream == NULL)
         return;
 
+    if (stream->scher)
+        net_destroy_scheduler(stream->scher);
+
     if (stream->buffer)
         buffer_unint(stream->buffer);
 
     if (stream->fp)
         fclose(stream->fp);
 
+    if (stream->ring_cache)
+        shm_cache_unint(stream->ring_cache);
+        
     net_free(stream);
 }
 
@@ -355,6 +361,9 @@ static int _rtmp_push_h264_stream(void *args)
 
 h264_stream *h264_stream_init(const char *file, rtmp_gop *gop)
 {
+    if (!file || !gop)
+        return NULL;
+
     int code = NET_FAIL;
     h264_stream * stream = NULL;
 
@@ -367,13 +376,17 @@ h264_stream *h264_stream_init(const char *file, rtmp_gop *gop)
         if (stream->fp == NULL)
             break;
 
-        stream->buffer = buffer_init(1024 * 1024);
+        stream->buffer = buffer_init(1024 * 1024 * 10);
         if (stream->buffer == NULL)
             break;
 
-        stream->ring_cache = shm_cache_init(1024 * 1024 * 10);
+        stream->ring_cache = shm_cache_init(1024 * 1024 * 100);
+        if (stream->ring_cache == NULL)
+            break;
 
         stream->scher = net_create_scheduler();
+        if (stream->scher == NULL)
+            break;
 
         stream->gop = gop;
 

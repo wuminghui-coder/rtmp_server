@@ -9,7 +9,6 @@ int rtmp_handshake_random(bs_t *b, uint32_t timestamp, size_t bytes)
         bs_write_u8(b, rand());
         bytes--;
     }
-
     return 0;
 }
 
