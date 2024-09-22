@@ -15,7 +15,7 @@ int rtmp_reply_connect(rtmp_ptr rtmp, int code, double transactionId)
     return rtmp_server_send_connect_result(rtmp, transactionId);
 }
 
-int rtmp_reply_create_stream(rtmp_ptr rtmp, int code, double transactionId)
+int rtmp_reply_result(rtmp_ptr rtmp, int code, double transactionId)
 {
     if (rtmp == NULL)
         return NET_FAIL;
@@ -44,4 +44,14 @@ int rtmp_reply_onplay(rtmp_ptr rtmp, int code, double transactionId)
     rtmp_server_send_onmetadata(rtmp);
 
     return rtmp_start_push_stream(rtmp);
+}
+
+int rtmp_reply_onstatus(rtmp_ptr rtmp, int code, double transactionId)
+{
+    if (rtmp == NULL)
+        return NET_FAIL;
+
+    char message[140] = {0};
+    sprintf(message, "start %s", rtmp->conn.app);
+    return rtmp_servrt_send_onstatus(rtmp, rtmp->packet->header.stream_id, transactionId, RTMP_LEVEL_STATUS, "NetStream.Publish.Start", message);
 }

@@ -22,7 +22,7 @@ void signal_handler(int signl)
 
 int main()
 {
-    net_exception(signal_handler); 
+    //net_exception(signal_handler); 
 
     rtmp_gop *gop = new_gop_cache();
     if (gop == NULL)
@@ -32,7 +32,7 @@ int main()
     if (stream == NULL)
         return EXIT_FAILURE;
 
-    server_ptr rtmp_server = tcp_start_server(DEFAULT_IP, 1935, 
+    server_ptr rtmp_server = tcp_start_server(DEFAULT_IP, 1934, 
                 rtmp_create_session, rtmp_detele_session, rtmp_recv_msg, gop);
     if (rtmp_server == NULL)
     {

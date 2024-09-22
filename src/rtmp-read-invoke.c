@@ -21,14 +21,15 @@ static int rtmp_read_onconnect(bs_t *b, rtmp_ptr rtmp)
 	conn->encoding = (double)RTMP_ENCODING_AMF_0;
 
     AMF_OBJECT_ITEM_VALUE(commands[0], AMF_STRING, "app", conn->app, sizeof(conn->app));
-    AMF_OBJECT_ITEM_VALUE(commands[1], AMF_STRING, "flashVer", conn->flashver, sizeof(conn->flashver));
-    AMF_OBJECT_ITEM_VALUE(commands[2], AMF_STRING, "tcUrl", conn->tcUrl, sizeof(conn->tcUrl));
-    AMF_OBJECT_ITEM_VALUE(commands[3], AMF_BOOLEAN, "fpad", &conn->fpad, 1);
-    AMF_OBJECT_ITEM_VALUE(commands[4], AMF_NUMBER, "capabilities", &conn->capabilities, 8);
-	AMF_OBJECT_ITEM_VALUE(commands[5], AMF_NUMBER, "audioCodecs", &conn->audioCodecs, 8);
- 	AMF_OBJECT_ITEM_VALUE(commands[6], AMF_NUMBER, "videoCodecs", &conn->videoCodecs, 8);
- 	AMF_OBJECT_ITEM_VALUE(commands[7], AMF_NUMBER, "videoFunction", &conn->videoFunction, 8);
- 	AMF_OBJECT_ITEM_VALUE(commands[8], AMF_NUMBER, "objectEncoding", &conn->encoding, 8);
+	AMF_OBJECT_ITEM_VALUE(commands[1], AMF_STRING, "type", conn->app, sizeof(conn->app));
+	AMF_OBJECT_ITEM_VALUE(commands[2], AMF_STRING, "flashVer", conn->flashver, sizeof(conn->flashver));
+    AMF_OBJECT_ITEM_VALUE(commands[3], AMF_STRING, "tcUrl", conn->tcUrl, sizeof(conn->tcUrl));
+    // AMF_OBJECT_ITEM_VALUE(commands[3], AMF_BOOLEAN, "fpad", &conn->fpad, 1);
+    // AMF_OBJECT_ITEM_VALUE(commands[4], AMF_NUMBER, "capabilities", &conn->capabilities, 8);
+	// AMF_OBJECT_ITEM_VALUE(commands[5], AMF_NUMBER, "audioCodecs", &conn->audioCodecs, 8);
+ 	// AMF_OBJECT_ITEM_VALUE(commands[6], AMF_NUMBER, "videoCodecs", &conn->videoCodecs, 8);
+ 	// AMF_OBJECT_ITEM_VALUE(commands[7], AMF_NUMBER, "videoFunction", &conn->videoFunction, 8);
+ 	// AMF_OBJECT_ITEM_VALUE(commands[8], AMF_NUMBER, "objectEncoding", &conn->encoding, 8);
 	AMF_OBJECT_ITEM_VALUE(items[0],    AMF_OBJECT, "command", commands, sizeof(commands) / sizeof(commands[0]));
     
     return amf_read_object_item(b, bs_read_u8(b), items);
@@ -158,7 +159,7 @@ static int rtmp_read_onpause(bs_t *b, rtmp_ptr rtmp)
 	return amf_read_item(b, items, sizeof(items) / sizeof(items[0]));
 }
 
-static int rtmp_read_onfcpublish(bs_t *b, rtmp_ptr rtmp)
+static int rtmp_read_fcpublish(bs_t *b, rtmp_ptr rtmp)
 {
     if (b == NULL || bs_bytes_left(b) < 1)
         return NET_FAIL;
@@ -169,6 +170,28 @@ static int rtmp_read_onfcpublish(bs_t *b, rtmp_ptr rtmp)
 	AMF_OBJECT_ITEM_VALUE(items[1], AMF_STRING, "playpath", stream_name, sizeof(stream_name));
 
 	return amf_read_item(b, items, sizeof(items) / sizeof(items[0]));
+}
+
+static int rtmp_read_onfcpublish(bs_t *b, rtmp_ptr rtmp)
+{
+	if (b == NULL || bs_bytes_left(b) < 1)
+		return NET_FAIL;
+
+	amf_object_item items[2];
+	amf_object_item commands[9];
+
+	char status[32]      = {0};
+	char code[32]        = {0};
+	char description[32] = {0};
+
+	AMF_OBJECT_ITEM_VALUE(items[0],    AMF_OBJECT, "command", NULL, 0);
+	AMF_OBJECT_ITEM_VALUE(commands[0], AMF_STRING, "level", status, sizeof(status));
+	AMF_OBJECT_ITEM_VALUE(commands[1], AMF_STRING, "code", code,   sizeof(code));
+	AMF_OBJECT_ITEM_VALUE(commands[2], AMF_STRING, "description", description, sizeof(description));
+	AMF_OBJECT_ITEM_VALUE(items[1],    AMF_OBJECT, "command", commands, sizeof(commands) / sizeof(commands[0]));
+
+	amf_read_item(b, items, 1);
+	return amf_read_object_item(b, bs_read_u8(b), &items[1]);
 }
 
 static int rtmp_read_onfcunpublish(bs_t *b, rtmp_ptr rtmp)
@@ -210,22 +233,38 @@ static int rtmp_read_onfcunsubscribe(bs_t *b, rtmp_ptr rtmp)
 	return amf_read_item(b, items, sizeof(items) / sizeof(items[0]));
 }
 
+static int rtmp_read_releaseStream(bs_t *b, rtmp_ptr rtmp)
+{
+	if (b == NULL || bs_bytes_left(b) < 1)
+		return NET_FAIL;
+
+	char subscribe[N_STREAM_NAME] = {0};
+	amf_object_item items[2];
+	AMF_OBJECT_ITEM_VALUE(items[0], AMF_OBJECT, "command", NULL, 0);
+	AMF_OBJECT_ITEM_VALUE(items[1], AMF_STRING, "stream", subscribe, sizeof(subscribe));
+
+	return amf_read_item(b, items, sizeof(items) / sizeof(items[0]));
+}
+
 rtmp_command_handle g_command_handle[] = {
     { "connect",         rtmp_read_onconnect,              rtmp_reply_connect},
-    { "createStream",    rtmp_read_oncreate_stream,        rtmp_reply_create_stream},
+    { "createStream",    rtmp_read_oncreate_stream,        rtmp_reply_result},
     { "getStreamLength", rtmp_read_onget_stream_length,    NULL},
     { "play",            rtmp_read_onplay,                 rtmp_reply_onplay},
     { "deleteStream",	 rtmp_read_ondelete_stream,        NULL},
 	{ "receiveAudio",	 rtmp_read_onreceive_audio,        NULL},
 	{ "receiveVideo",	 rtmp_read_onreceive_video,        NULL},
-	{ "publish",		 rtmp_read_onpublish,              NULL},
+	{ "publish",		 rtmp_read_onpublish,              rtmp_reply_onstatus},
 	{ "seek",			 rtmp_read_onseek,                 NULL},
 	{ "pause",			 rtmp_read_onpause,                NULL},
 
-    { "FCPublish",		 rtmp_read_onfcpublish,            NULL},
+    { "FCPublish",		 rtmp_read_fcpublish,              NULL},
 	{ "FCUnpublish",	 rtmp_read_onfcunpublish,          NULL},
 	{ "FCSubscribe",	 rtmp_read_onfcsubscribe,          NULL},
 	{ "FCUnsubscribe",	 rtmp_read_onfcunsubscribe,        NULL},
+	{ "releaseStream",	 rtmp_read_releaseStream,          NULL},
+	{ "onFCPublish",     rtmp_read_onfcpublish,            rtmp_reply_result},
+	{ "onstatus",        rtmp_read_onfcpublish,            rtmp_reply_result},
 };
 
 int rtmp_recv_paser_invoke(rtmp_session *rtmp, bs_t *b)

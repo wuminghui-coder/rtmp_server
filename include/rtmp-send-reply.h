@@ -17,7 +17,8 @@
 #define RTMP_WINDOW_SIZE    5000000
 
 int rtmp_reply_connect(rtmp_ptr rtmp, int code, double transactionId);
-int rtmp_reply_create_stream(rtmp_ptr rtmp, int code, double transactionId);
+int rtmp_reply_result(rtmp_ptr rtmp, int code, double transactionId);
 int rtmp_reply_onplay(rtmp_ptr rtmp, int code, double transactionId);
+int rtmp_reply_onstatus(rtmp_ptr rtmp, int code, double transactionId);
 
 #endif // !__RMTP_SNED_REPLY_H__

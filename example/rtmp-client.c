@@ -49,6 +49,23 @@ int main()
     // net_delete_timer_task(timer_once);
     // net_destroy_scheduler(scher);
     
+    SOCKET fd = CreateTcpSocket();
+    Connect(fd, "127.0.0.1", 1934, 10);
+
+    sche_ptr scher = net_create_scheduler();
+    if (scher == NULL)
+    {
+        ERR("create Scheduler");
+        return EXIT_FAILURE;
+    }
+
+    //ev_ptr ev = net_create_reader(scher, fd, tcp_new_connection, (void *)server);
+
+    while (exit_flags)
+        sleep(1);
+        
+    net_destroy_scheduler(scher);
+
     return EXIT_SUCCESS;
 }
 
