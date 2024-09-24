@@ -15,6 +15,7 @@ static int rtmp_recv_paser_event(rtmp_ptr rtmp, bs_t *b)
         LOG("event_type %d,%d,%d", event_type, stream_id, cache_lenth);
     }
     //rtmp_server_stream_begin(rtmp_ptr rtmp, uint32_t streamId);
+    return NET_SUCCESS;
 }
 
 static int rtmp_recv_paser_acknowledgement(rtmp_session *rtmp, bs_t *b)
@@ -97,6 +98,18 @@ static int rtmp_recv_set_onMetaData(rtmp_session *rtmp, bs_t *b)
     return amf_read_object_item(b, bs_read_u8(b), items);
 }
 
+
+static int rtmp_recv_set_peer_bandwidth(rtmp_session *rtmp, bs_t *b)
+{
+    if (rtmp == NULL || b == NULL)
+        return NET_FAIL;
+    int window     = bs_read_u(b, 32);
+    int limit_type = bs_read_u(b, 8);
+    ERR("window %d, limit type %d", window, limit_type);
+    return NET_SUCCESS;
+}
+
+
 int rtmp_recv_event(rtmp_session *rtmp)
 {
     if (rtmp == NULL || rtmp->packet == NULL)
@@ -123,13 +136,16 @@ int rtmp_recv_event(rtmp_session *rtmp)
             rtmp_recv_paser_event(rtmp, b);
             break;
         case RTMP_TYPE_SET_CHUNK_SIZE:
+            rtmp_recv_set_chunk_size(rtmp, b);
+            break;
         case RTMP_TYPE_ABORT:
         case RTMP_TYPE_ACKNOWLEDGEMENT:
         case RTMP_TYPE_WINDOW_ACKNOWLEDGEMENT_SIZE:
             rtmp_recv_paser_acknowledgement(rtmp, b);
             break;
         case RTMP_TYPE_SET_PEER_BANDWIDTH:
-
+            rtmp_recv_set_peer_bandwidth(rtmp, b);
+            break;
         case RTMP_TYPE_DATA:
             rtmp_recv_set_onMetaData(rtmp, b);
             break;

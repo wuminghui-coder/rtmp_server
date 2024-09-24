@@ -11,17 +11,17 @@ static int rtmp_read_onconnect(bs_t *b, rtmp_ptr rtmp)
     if (b == NULL ||rtmp == NULL)
         return NET_FAIL;
 
-    retrieve(rtmp->buffer, readable_bytes(rtmp->buffer));
+    //retrieve(rtmp->buffer, readable_bytes(rtmp->buffer));
     
     rtmp_connect *conn = &rtmp->conn;
 
 	amf_object_item items[1];
-	amf_object_item commands[9];
+	amf_object_item commands[4];
 
 	conn->encoding = (double)RTMP_ENCODING_AMF_0;
 
     AMF_OBJECT_ITEM_VALUE(commands[0], AMF_STRING, "app", conn->app, sizeof(conn->app));
-	AMF_OBJECT_ITEM_VALUE(commands[1], AMF_STRING, "type", conn->app, sizeof(conn->app));
+	AMF_OBJECT_ITEM_VALUE(commands[1], AMF_STRING, "type", conn->type, sizeof(conn->type));
 	AMF_OBJECT_ITEM_VALUE(commands[2], AMF_STRING, "flashVer", conn->flashver, sizeof(conn->flashver));
     AMF_OBJECT_ITEM_VALUE(commands[3], AMF_STRING, "tcUrl", conn->tcUrl, sizeof(conn->tcUrl));
     // AMF_OBJECT_ITEM_VALUE(commands[3], AMF_BOOLEAN, "fpad", &conn->fpad, 1);

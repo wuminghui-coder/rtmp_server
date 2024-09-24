@@ -40,7 +40,8 @@ enum rtmp_video_function_t
 typedef struct rtmp_connect_t
 {
 	char app[128]; // Server application name, e.g.: testapp
-	char flashver[32]; // Flash Player version, FMSc/1.0
+	char flashver[64]; // Flash Player version, FMSc/1.0
+	char type[128];
 	char swfUrl[256]; // URL of the source SWF file
 	char tcUrl[256]; // URL of the Server, rtmp://host:1935/testapp/instance1
 	uint8_t fpad; // boolean: True if proxy is being used.

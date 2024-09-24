@@ -3,3 +3,5 @@ obj
 libflv
 schudule
 rtmp_server
+librtmp
+h264bitstream
